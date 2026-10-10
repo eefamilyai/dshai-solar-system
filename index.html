@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar System — orbits to scale of period</title>
+<style>
+  html, body { margin: 0; height: 100%; background: radial-gradient(ellipse at center, #10131c 0%, #05060a 70%); overflow: hidden; font-family: system-ui, sans-serif; color: #e8e8ea; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  header { position: fixed; top: 20px; left: 24px; pointer-events: none; }
+  h1 { margin: 0; font-size: clamp(18px, 3vw, 28px); font-weight: 600; letter-spacing: .02em; }
+  p { margin: 4px 0 0; color: #9aa0ad; font-size: 13px; }
+  .panel { position: fixed; bottom: 20px; left: 24px; display: flex; gap: 12px; align-items: center; font-size: 13px; color: #c6cad3; }
+  input { accent-color: #f5b942; }
+</style>
+</head>
+<body>
+<header><h1>The Solar System</h1><p>Orbital periods to scale · distances compressed · hover a planet</p></header>
+<div class="panel"><label>Speed <input id="speed" type="range" min="0" max="200" value="40"></label><span id="days"></span></div>
+<canvas id="c"></canvas>
+<script>
+const planets = [
+  ['Mercury', 88, 3.0, '#b1a89c'], ['Venus', 225, 5.5, '#e6c27a'], ['Earth', 365, 6, '#4f93e6'], ['Mars', 687, 4.2, '#d6643a'],
+  ['Jupiter', 4333, 14, '#d8b38a'], ['Saturn', 10759, 12, '#e8d39a'], ['Uranus', 30687, 9, '#8fd6e0'], ['Neptune', 60190, 9, '#4d6fe0'],
+]
+const c = document.getElementById('c'), g = c.getContext('2d'), speed = document.getElementById('speed'), days = document.getElementById('days')
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+let W, H, dpr, mouse = [-1, -1], t = 0, last = performance.now()
+const stars = Array.from({ length: 400 }, () => [Math.random(), Math.random(), Math.random() * 1.2 + .2])
+function fit() { dpr = devicePixelRatio || 1; W = c.width = innerWidth * dpr; H = c.height = innerHeight * dpr }
+addEventListener('resize', fit); fit()
+addEventListener('mousemove', e => { mouse = [e.clientX * dpr, e.clientY * dpr] })
+function frame(now) {
+  const dt = Math.min(now - last, 50); last = now
+  if (!reduce) t += dt * speed.value / 10
+  days.textContent = `${Math.floor(t).toLocaleString()} Earth days`
+  g.fillStyle = '#05060a'; g.fillRect(0, 0, W, H)
+  for (const [x, y, r] of stars) { g.fillStyle = `rgba(255,255,255,${.25 + r / 3})`; g.fillRect(x * W, y * H, r * dpr, r * dpr) }
+  const cx = W / 2, cy = H / 2, max = Math.min(W, H) * .46
+  const sun = g.createRadialGradient(cx, cy, 0, cx, cy, 34 * dpr)
+  sun.addColorStop(0, '#fff6d0'); sun.addColorStop(.4, '#f5b942'); sun.addColorStop(1, 'rgba(245,120,40,0)')
+  g.fillStyle = sun; g.beginPath(); g.arc(cx, cy, 34 * dpr, 0, 7); g.fill()
+  let hover = null
+  planets.forEach(([name, period, size, color], i) => {
+    const r = max * (0.13 + i * 0.115)
+    g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = dpr; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke()
+    const a = t / period * Math.PI * 2 + i, x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r, s = size * dpr * .7
+    if (name === 'Saturn') { g.strokeStyle = 'rgba(232,211,154,.6)'; g.lineWidth = 2 * dpr; g.beginPath(); g.ellipse(x, y, s * 1.9, s * .6, -.4, 0, 7); g.stroke() }
+    g.fillStyle = color; g.beginPath(); g.arc(x, y, s, 0, 7); g.fill()
+    if (Math.hypot(mouse[0] - x, mouse[1] - y) < s + 8 * dpr) hover = [name, period, x, y]
+  })
+  if (hover) {
+    const [name, period, x, y] = hover
+    g.font = `${13 * dpr}px system-ui`; g.fillStyle = '#fff'
+    g.fillText(`${name} · one orbit = ${period.toLocaleString()} days`, x + 14 * dpr, y - 10 * dpr)
+  }
+  requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame)
+</script>
+</body>
+</html>
